@@ -1,0 +1,108 @@
+---
+title: "Analyse des émissions"
+#author: "Quentin Perrier"
+#date: "12/13/2018"
+output:
+  pdf_document: default
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, fig.align = "center")
+
+```
+
+## Vue générale
+
+```{r libraries, echo=FALSE, message=FALSE}
+library(tidyverse)
+results <- readRDS("../outputs/results.rds")
+
+n_colloques <- nrow(results)
+n_flights <- sum(results$transportation_mode == "plane")
+share_flights <- round(n_flights * 100 / n_colloques,0)
+
+global_carbon_budget <- sum(results$emissions, na.rm = T) %>% round(0)
+avg_emissions <- round(sum(results$emissions, na.rm = T) / nrow(results), 2)
+```
+
+Sur l'ensemble étudié, les membres du Cired se sont rendus à `r n_colloques` colloques.
+
+Parmi eux, le transport aérien a été utilisé pour `r n_flights` colloques, soit `r share_flights`% du temps.
+
+Le bilan carbone total est estimé à `r global_carbon_budget` tonnes de CO2e, soit des émissions moyennes de `r avg_emissions` tCO2 par colloque.
+
+
+## Graphiques
+
+Les émissions annuelles ont fortement variées d'une année sur l'autre, comme indiqué par les barres sur le graphique ci-dessous. Le nombre de conférences (avec au sans avion) est indique par les points sur le graphique, et semble relativement corrélée avec le nombre d'émissions totales.
+
+
+```{r annual_variations, echo=FALSE, fig.width = 4, fig.height = 3}
+results %>% 
+  filter(transportation_mode == "plane") %>% 
+  group_by(Year) %>% 
+  summarise(emissions = sum(emissions),
+            n_conf = n()) %>% 
+  ggplot(aes(x = Year, y = emissions)) + 
+  geom_bar(stat = "identity") +
+  geom_point(aes(y = n_conf)) +
+  labs(x = 'Year', y = 'Emissions (tCO2e)', title = "Annual emissions") +
+  theme_bw() 
+
+```
+
+En divisant les émissions annuelles par le nombre de conférences la même année, on peut obtenir l'intensité en émissions des conférences chaque année. Ce résultat est indiqué dans la figure ci-dessous :
+
+```{r annual_intensity, echo=FALSE, fig.width = 4, fig.height = 3}
+results %>% 
+  group_by(Year) %>% 
+  summarise(emissions = sum(emissions, na.rm = T),
+            n_conf = n(),
+            avg_emissions = emissions / n_conf) %>% 
+  ggplot(aes(x = Year, y = avg_emissions)) +
+  geom_bar(stat = "identity") +
+  labs(x = 'Annee', 
+       y = 'Emission intensity (tCO2e/conf)', 
+       title = "Average carbon intensity of a conference") +
+  theme_bw() 
+```
+
+Cette intensité a été particulièrement élevée en 2016 et 2017. On peut l'expliquer par la localisation des conférences ces années-là : les émissions sont liées à des conférence en Inde, aux Etats-Unis et au Brésil en 2017 ; en Chine et en Colombie en 2016. 
+Au total, les Etats-Unis, la Chine et l'Inde sont les destinations les plus carbonées pour le Cired sur l'ensemble de la période. A elles trois, elles représentes **45%** des émissions totales.
+
+```{r yearly_destination, echo=FALSE, fig.width = 5, fig.height = 5}
+results %>% 
+  filter(transportation_mode == "plane") %>%
+  group_by(Country, Year) %>% 
+  summarise(emissions = sum(emissions)) %>% 
+  group_by(Year) %>% 
+  mutate(annual_share = emissions / sum(emissions)) %>% 
+  ggplot(aes(x = Year, 
+             y = emissions,
+             fill = Country)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = ifelse(annual_share > 0.1, Country, "")), position = position_stack(vjust = 0.5)) +
+  labs(x = "Country", y = "Emissions (tCO2)", 
+       title = "Annual emissions by destination") +
+  theme_bw() +
+  guides(fill=FALSE)
+```
+
+
+```{r destination, echo=FALSE, fig.width = 5, fig.height = 5}
+results %>% 
+  filter(transportation_mode == "plane") %>%
+  group_by(Country) %>% 
+  summarise(emissions = sum(emissions)) %>% 
+  mutate(share = 100 * emissions / sum(emissions)) %>% 
+  ggplot(aes(x = reorder(Country, emissions), 
+             y = emissions)) +
+  geom_bar(stat = "identity") +
+  geom_text(aes(label = paste0(round(share, 2), "%"), y = emissions + 3), 
+            size = 3) +
+  labs(x = "Country", y = "Emissions (tCO2)", title = "Emissions by destination") +
+  coord_flip() +
+  theme_bw()
+```
+

@@ -1,0 +1,6 @@
+﻿Distance;Facteur;Unit
+<1000 km;293;gCO2e/passager.km
+1000-2000 km;216;gCO2e/passager.km
+2000-3000 km;209;gCO2e/passager.km
+> 3000km;200;gCO2e/passager.km
+#Source: ADEME Bilan GES, http://www.bilans-ges.ademe.fr/fr/basecarbone/donnees-consulter/liste-element/categorie/190 ;;
